@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candidates 2026 — Apuestas</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const cfg = {
+    apiKey:            "AIzaSyDaTCkMQz4hIAkIDcim_Rqk80TXKe6-FX8",
+    authDomain:        "candidatos26.firebaseapp.com",
+    databaseURL:       "https://candidatos26-default-rtdb.firebaseio.com",
+    projectId:         "candidatos26",
+    storageBucket:     "candidatos26.firebasestorage.app",
+    messagingSenderId: "712921647946",
+    appId:             "1:712921647946:web:e6ce58b8471d798a84cfb3"
+  };
+  const db = getDatabase(initializeApp(cfg));
+  const r  = p => ref(db, p);
+
+  window._fb = {
+    getUser:         async u    => (await get(r(`users/${u}`))).val(),
+    createUser:      (u, hash)  => set(r(`users/${u}`), { hash, created: Date.now() }),
+    setChampBet:     (u, p)     => set(r(`bets/${u}/champion`), { player: p, ts: Date.now() }),
+    setMatchBet:     (u, k, pk) => set(r(`bets/${u}/matches/${k}`), { pick: pk, ts: Date.now() }),
+    onBets:          cb => onValue(r('bets'),    s => cb(s.val() || {})),
+    setChampResult:  p      => set(r('results/champion'), p),
+    setMatchResult:  (k, v) => set(r(`results/matches/${k}`), v),
+    onResults:       cb => onValue(r('results'), s => cb(s.val() || {})),
+    // locks: { champion: true/false, rounds: { 1: true, 2: false, ... } }
+    setRoundLock:    (rn, locked) => set(r(`locks/rounds/${rn}`), locked),
+    setChampLock:    (locked)     => set(r('locks/champion'), locked),
+    onLocks:         cb => onValue(r('locks'), s => cb(s.val() || {})),
+    resetAll: () => Promise.all([set(r('bets'), null), set(r('results'), null), set(r('locks'), null)])
+  };
+  window._fbReady = true;
+  document.dispatchEvent(new Event('fb'));
+</script>
+
+<style>
+:root{
+  --bg:#06080c;--s1:#0b0f18;--s2:#111722;--s3:#171e2c;
+  --bd:#1b2334;--bd2:#253046;
+  --gold:#c8a84b;--gdim:rgba(200,168,75,.11);--gbrt:#e8c870;
+  --w:#ede9e2;--mut:#4e6080;--mut2:#6e82a0;
+  --grn:#38b074;--red:#b83838;--drw:#5878a8;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--w);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:repeating-conic-gradient(rgba(255,255,255,.015) 0% 25%,transparent 0% 50%);background-size:52px 52px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 45% at 50% -5%,rgba(200,168,75,.07),transparent 60%);pointer-events:none;z-index:0}
+.wrap{max-width:1020px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+
+/* AUTH MODAL */
+#auth{position:fixed;inset:0;background:rgba(6,8,12,.93);backdrop-filter:blur(10px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.abox{background:var(--s1);border:1px solid var(--bd2);border-radius:14px;padding:36px;width:100%;max-width:390px}
+.alogo{font-size:38px;margin-bottom:16px}
+.abox h2{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:4px}
+.abox .asub{font-size:13px;color:var(--mut2);margin-bottom:22px;line-height:1.6}
+.atabs{display:flex;gap:4px;margin-bottom:20px}
+.atab{flex:1;padding:8px;background:transparent;border:1px solid var(--bd2);color:var(--mut);font-family:'DM Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-radius:4px;transition:all .18s;text-align:center}
+.atab:hover{color:var(--w)}
+.atab.on{color:var(--gold);border-color:rgba(200,168,75,.35);background:var(--gdim)}
+.flabel{display:block;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;margin-top:14px}
+.field{width:100%;background:var(--s2);border:1px solid var(--bd2);color:var(--w);padding:10px 14px;font-family:'DM Mono',monospace;font-size:13px;border-radius:6px;outline:none;transition:border-color .18s}
+.field:focus{border-color:var(--gold)}
+.field::placeholder{color:var(--mut)}
+.aerr{font-family:'DM Mono',monospace;font-size:12px;color:var(--red);margin-top:10px;min-height:16px}
+.btn{padding:10px 22px;background:var(--gold);color:#06080c;border:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:6px;white-space:nowrap;transition:all .18s}
+.btn:hover{background:var(--gbrt);transform:translateY(-1px)}
+.btn.ghost{background:transparent;color:var(--mut2);border:1px solid var(--bd2)}
+.btn.ghost:hover{border-color:var(--gold);color:var(--gold);background:transparent}
+.btn.danger{background:var(--red);color:#fff}
+.btn.danger:hover{background:#c44}
+.btn.full{width:100%}
+.btn.mgt{margin-top:14px}
+
+/* HEADER */
+header{padding:40px 0 28px;border-bottom:1px solid var(--bd)}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.28em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:'';width:16px;height:1px;background:var(--gold)}
+h1{font-family:'Playfair Display',serif;font-size:clamp(30px,5.5vw,52px);font-weight:900;line-height:.95;letter-spacing:-.02em}
+h1 em{color:var(--gold);font-style:normal}
+.meta{text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);line-height:2.1;border-left:1px solid var(--bd);padding-left:16px}
+.meta strong{color:var(--mut2)}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-top:12px}
+.live::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor;animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:13px 0;border-bottom:1px solid var(--bd);overflow-x:auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 16px;background:transparent;border:1px solid transparent;color:var(--mut);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:4px;white-space:nowrap;transition:all .18s}
+.tab:hover{color:var(--w);border-color:var(--bd2)}
+.tab.on{color:var(--gold);border-color:rgba(200,168,75,.35);background:var(--gdim)}
+
+/* VIEWS */
+.view{display:none;padding:26px 0 60px}
+.view.on{display:block}
+
+/* USER BAR */
+.ubar{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--s1);border:1px solid var(--bd);border-radius:8px;margin-bottom:22px;flex-wrap:wrap}
+.logged{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:13px;color:var(--gold)}
+.logged small{color:var(--mut);font-size:11px}
+
+/* SECTION TITLE */
+.stitle{font-family:'Playfair Display',serif;font-size:18px;color:var(--w);margin-bottom:14px;display:flex;align-items:center;gap:14px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* CHAMPION */
+.champ-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:12px;margin-bottom:32px;overflow:hidden}
+.champ-hdr{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(200,168,75,.07),transparent)}
+.champ-hdr h3{font-family:'Playfair Display',serif;font-size:16px}
+.champ-hdr p{font-size:12px;color:var(--mut2);margin-top:2px}
+.champ-body{padding:18px 20px;display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.ppgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-width:240px}
+@media(max-width:580px){.ppgrid{grid-template-columns:repeat(2,1fr)}}
+.ppbtn{background:var(--s2);border:1px solid var(--bd2);border-radius:8px;padding:11px 8px;cursor:pointer;transition:all .2s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+.ppbtn:hover{background:var(--s3);transform:translateY(-1px)}
+.ppbtn.on{border-color:var(--gold);background:var(--gdim)}
+.ppbtn .pf{font-size:19px}
+.ppbtn .pi{font-size:10px;color:var(--mut2);font-family:'DM Mono',monospace}
+.ppbtn .pl{font-size:12px;font-weight:600;color:var(--w);line-height:1.2}
+.ppbtn .pr{font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;margin-top:1px}
+.ppbtn.on .pl{color:var(--gold)}
+.champ-side{display:flex;flex-direction:column;gap:10px;min-width:160px}
+.mychamp{background:var(--gdim);border:1px solid rgba(200,168,75,.22);border-radius:8px;padding:12px 14px}
+.mychamp .cl{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.mychamp .cn{font-size:14px;font-weight:600;color:var(--gold)}
+.rb{display:inline-block;font-family:'DM Mono',monospace;font-size:11px;padding:3px 9px;border-radius:4px;margin-top:6px}
+.rb.won{background:rgba(56,176,116,.12);color:var(--grn)}
+.rb.lost{background:rgba(184,56,56,.12);color:var(--red)}
+.rb.pend{background:rgba(78,96,128,.15);color:var(--mut2)}
+
+/* ROUND */
+.rblock{margin-bottom:28px}
+.rhdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.rhdr h4{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.14em;white-space:nowrap}
+.rhdr .rdt{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);white-space:nowrap}
+.rhdr::after{content:'';flex:1;height:1px;background:var(--bd)}
+.rgames{display:grid;grid-template-columns:repeat(auto-fill,minmax(295px,1fr));gap:10px}
+
+/* LOCK BADGE */
+.lock-badge{display:inline-flex;align-items:center;gap:5px;font-family:'DM Mono',monospace;font-size:10px;padding:3px 9px;border-radius:4px;white-space:nowrap}
+.lock-badge.locked{background:rgba(184,56,56,.13);color:var(--red);border:1px solid rgba(184,56,56,.25)}
+.lock-badge.open{background:rgba(56,176,116,.11);color:var(--grn);border:1px solid rgba(56,176,116,.22)}
+.round-locked .mpicks{pointer-events:none;opacity:.38}
+.round-locked .mcard{border-color:rgba(184,56,56,.15)}
+.round-locked-banner{background:rgba(184,56,56,.08);border:1px solid rgba(184,56,56,.2);border-radius:7px;padding:9px 14px;margin-bottom:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);display:flex;align-items:center;gap:8px}
+.champ-locked .ppbtn{pointer-events:none;opacity:.38}
+.champ-locked .btn{opacity:.38;pointer-events:none}
+.champ-lock-banner{background:rgba(184,56,56,.08);border:1px solid rgba(184,56,56,.2);border-radius:7px;padding:9px 14px;margin-bottom:12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--red);display:flex;align-items:center;gap:8px}
+.adm-rblock-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bd);flex-wrap:wrap;gap:8px}
+.adm-rblock-hdr h4{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin:0}
+.lock-toggle{display:flex;align-items:center;gap:6px}
+.ltbtn{padding:4px 12px;font-family:'DM Mono',monospace;font-size:10px;border-radius:4px;cursor:pointer;border:1px solid;transition:all .18s;white-space:nowrap}
+.ltbtn.lock-it{background:rgba(184,56,56,.1);border-color:rgba(184,56,56,.35);color:var(--red)}
+.ltbtn.lock-it:hover{background:rgba(184,56,56,.2)}
+.ltbtn.unlock-it{background:rgba(56,176,116,.1);border-color:rgba(56,176,116,.35);color:var(--grn)}
+.ltbtn.unlock-it:hover{background:rgba(56,176,116,.2)}
+
+/* MATCH CARD */
+.mcard{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;transition:border-color .2s}
+.mcard:hover{border-color:var(--bd2)}
+.mcard.picked{border-color:rgba(200,168,75,.24)}
+.mhdr{display:grid;grid-template-columns:1fr 40px 1fr}
+.mside{padding:14px 12px 11px;display:flex;flex-direction:column;justify-content:center}
+.mside.ws{background:rgba(240,235,224,.03);text-align:left}
+.mside.bs{background:rgba(10,10,10,.15);text-align:right;align-items:flex-end}
+.cpip{display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px;color:var(--mut2)}
+.pip{width:9px;height:9px;border-radius:50%;border:1px solid rgba(255,255,255,.1)}
+.pip.w{background:#f0ebe0}
+.pip.b{background:#111;border-color:rgba(255,255,255,.2)}
+.mfl{font-size:17px;margin-bottom:3px}
+.mfi{font-size:10px;color:var(--mut2)}
+.mla{font-size:14px;font-weight:700;color:var(--w);line-height:1.1}
+.mra{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);margin-top:2px}
+.mvsep{display:flex;align-items:center;justify-content:center;background:var(--s2);border-left:1px solid var(--bd);border-right:1px solid var(--bd);font-family:'DM Mono',monospace;font-size:11px;color:var(--mut2)}
+
+.mpicks{display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--bd)}
+.popt{padding:10px 5px;cursor:pointer;text-align:center;border:none;background:transparent;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center;gap:2px;border-right:1px solid var(--bd);transition:background .15s}
+.popt:last-child{border-right:none}
+.popt:hover{background:var(--s2)}
+.popt .pi{font-size:15px}
+.popt .pl{font-size:11px;color:var(--mut2);font-weight:500}
+.popt .ps{font-size:10px;color:var(--mut);font-family:'DM Mono',monospace}
+.popt.aw{background:rgba(56,176,116,.08)}.popt.aw .pl{color:var(--grn)}
+.popt.ad{background:rgba(88,120,168,.08)}.popt.ad .pl{color:var(--drw)}
+.popt.al{background:rgba(184,56,56,.08)}.popt.al .pl{color:var(--red)}
+.dis .popt{cursor:default;opacity:.45;pointer-events:none}
+
+.rbar{padding:8px 12px;font-family:'DM Mono',monospace;font-size:10px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;border-top:1px solid var(--bd)}
+.rbar.rw{background:rgba(56,176,116,.07);color:var(--grn)}
+.rbar.rd{background:rgba(88,120,168,.07);color:var(--drw)}
+.rbar.rl{background:rgba(184,56,56,.07);color:var(--red)}
+.verdict{font-weight:600}
+.verdict.won{color:var(--grn)}
+.verdict.lost{color:var(--red)}
+
+/* MY BETS TABLE */
+.bstable{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.bshdr{display:grid;grid-template-columns:1fr 110px 110px 52px;align-items:center;padding:10px 16px;background:var(--s2);border-bottom:1px solid var(--bd);font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+.bsrow{display:grid;grid-template-columns:1fr 110px 110px 52px;align-items:center;padding:11px 16px;border-bottom:1px solid var(--bd);font-size:12px;transition:background .15s}
+.bsrow:last-child{border-bottom:none}
+.bsrow:hover{background:var(--s2)}
+.bsmatch{color:var(--w);line-height:1.4}
+.bsrnd{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);margin-top:1px}
+.bspick{font-family:'DM Mono',monospace;font-size:11px;color:var(--mut2)}
+.bsres{font-family:'DM Mono',monospace;font-size:11px;text-align:center}
+.bspts{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);text-align:right}
+
+/* STAT BOXES */
+.sboxes{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.sbox{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px 18px;text-align:center;flex:1;min-width:90px}
+.sbox .sv{font-family:'Playfair Display',serif;font-size:26px;color:var(--gold)}
+.sbox .sl{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;margin-top:3px}
+
+/* RANKING */
+.lb{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.lbrow{display:grid;grid-template-columns:48px 1fr 80px 80px;align-items:center;padding:13px 18px;border-bottom:1px solid var(--bd);transition:background .15s;font-size:14px}
+.lbrow:last-child{border-bottom:none}
+.lbrow:not(.hdr):hover{background:var(--s2)}
+.lbrow.hdr{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--mut);text-transform:uppercase;background:var(--s2)}
+.lbrank{font-family:'DM Mono',monospace;font-size:13px;color:var(--mut)}
+.lbrank.r1{color:#ffd700;font-size:16px}.lbrank.r2{color:#c0c0c0;font-size:15px}.lbrank.r3{color:#cd7f32;font-size:15px}
+.lbacc{font-family:'DM Mono',monospace;font-size:12px;color:var(--mut);text-align:center}
+.lbpts{font-family:'DM Mono',monospace;font-size:14px;color:var(--gold);text-align:right}
+
+/* ADMIN */
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:24px}
+.adm-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:18px}
+.adm-card h3{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.14em;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd)}
+.stat-line{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:12px;color:var(--mut2);padding:3px 0}
+.stat-line span{color:var(--w)}
+select{width:100%;background:var(--s2);border:1px solid var(--bd2);color:var(--w);padding:8px 10px;font-family:'DM Mono',monospace;font-size:12px;border-radius:4px;margin-bottom:8px;outline:none;cursor:pointer;transition:border-color .18s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234e6080'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+select:focus{border-color:var(--gold)}
+select option{background:#111722}
+.adm-rblock{margin-bottom:20px}
+.adm-rblock h4{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bd)}
+.ami{background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.ami-info{font-size:12px;line-height:1.5;color:var(--w)}
+.ami-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);margin-top:2px}
+.ami-btns{display:flex;gap:5px;flex-wrap:wrap}
+.ami-btn{padding:5px 10px;background:var(--s2);border:1px solid var(--bd2);color:var(--mut2);font-family:'DM Mono',monospace;font-size:10px;border-radius:4px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.ami-btn:hover{color:var(--w)}
+.ami-btn.dw{background:rgba(56,176,116,.11);border-color:rgba(56,176,116,.4);color:var(--grn)}
+.ami-btn.dd{background:rgba(88,120,168,.11);border-color:rgba(88,120,168,.4);color:var(--drw)}
+.ami-btn.dl{background:rgba(184,56,56,.11);border-color:rgba(184,56,56,.4);color:var(--red)}
+
+/* MISC */
+.empty{text-align:center;padding:40px 20px;color:var(--mut)}
+.ei{font-size:36px;margin-bottom:10px;opacity:.2}
+.empty p{font-size:13px}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--s2);border:1px solid var(--bd2);border-left:3px solid var(--gold);color:var(--w);padding:10px 16px;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;z-index:9999;transform:translateX(130%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:270px}
+#toast.on{transform:translateX(0)}
+#toast.err{border-left-color:var(--red)}
+
+@media(max-width:560px){
+  h1{font-size:28px}.meta{display:none}
+  .mhdr{grid-template-columns:1fr 30px 1fr}.mside{padding:10px 8px}.mla{font-size:12px!important}
+  .bshdr,.bsrow{grid-template-columns:1fr 90px 52px}.bsres{display:none}
+  .lbrow{grid-template-columns:38px 1fr 70px}.lbacc{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="abox">
+    <div class="alogo">♟</div>
+    <h2>Candidates 2026</h2>
+    <p class="asub">Apuestas para el torneo FIDE · Chipre, marzo–abril 2026</p>
+    <div class="atabs">
+      <button class="atab on" onclick="setMode('login',this)">Ingresar</button>
+      <button class="atab"    onclick="setMode('reg',this)">Registrarse</button>
+    </div>
+    <label class="flabel">Usuario</label>
+    <input class="field" id="aUser" placeholder="tu_nombre" maxlength="20"
+           onkeydown="if(event.key==='Enter')doAuth()">
+    <label class="flabel">Contraseña</label>
+    <input class="field" id="aPass" type="password" placeholder="••••••••"
+           onkeydown="if(event.key==='Enter')doAuth()">
+    <div class="aerr" id="aErr"></div>
+    <button class="btn full mgt" onclick="doAuth()">Continuar →</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<header>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <div class="eyebrow">FIDE Candidates Tournament</div>
+      <h1>Apuestas<br><em>2026</em></h1>
+      <div class="live" id="liveEl" style="color:var(--mut)">Conectando…</div>
+    </div>
+    <div class="meta">
+      <strong>📍 Pegeia, Chipre</strong><br>
+      29 mar – 15 abr 2026<br>
+      14 Rondas · Doble Round-Robin<br>
+      56 partidas · Premio €1 000 000
+    </div>
+  </div>
+</div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('apostar',this)">♟ Apostar</button>
+    <button class="tab"    onclick="showTab('misapuestas',this)">📋 Mis apuestas</button>
+    <button class="tab"    onclick="showTab('ranking',this)">🏆 Ranking</button>
+    <button class="tab"    onclick="showTab('admin',this)">⚙ Admin</button>
+  </div>
+
+  <!-- APOSTAR -->
+  <div id="view-apostar" class="view on">
+    <div class="ubar" id="ubar"></div>
+
+    <div class="stitle">Campeón del torneo</div>
+    <div class="champ-wrap" id="champWrap">
+      <div class="champ-hdr">
+        <div style="font-size:26px">♛</div>
+        <div>
+          <h3>¿Quién ganará el FIDE Candidates 2026?</h3>
+          <p>Retará a Gukesh Dommaraju por el título mundial · <span style="color:var(--grn)">+5 puntos</span> si acertás</p>
+        </div>
+      </div>
+      <div class="champ-body">
+        <div class="ppgrid" id="champGrid"></div>
+        <div class="champ-side">
+          <button class="btn" onclick="betChampion()">Confirmar →</button>
+          <div id="myChampDisplay"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stitle">Partidas por ronda</div>
+    <p style="font-size:12px;color:var(--mut2);margin-bottom:20px;line-height:1.8">
+      Fixture oficial FIDE · <span style="color:#f0ebe0">⬜ Blancas</span> mueven primero (ligera ventaja) ·
+      <span style="color:var(--grn)">+1 punto</span> por cada acierto · Podés cambiar hasta que el Admin cargue el resultado.
+    </p>
+    <div id="matchArea"></div>
+  </div>
+
+  <!-- MIS APUESTAS -->
+  <div id="view-misapuestas" class="view">
+    <div class="stitle">Mis apuestas</div>
+    <div id="myBetsWrap"></div>
+  </div>
+
+  <!-- RANKING -->
+  <div id="view-ranking" class="view">
+    <div class="stitle">Tabla de posiciones</div>
+    <p style="font-size:12px;color:var(--mut2);margin-bottom:14px">
+      Campeón = <span style="color:var(--grn)">+5 pts</span> &nbsp;·&nbsp;
+      Partida acertada = <span style="color:var(--grn)">+1 pt</span>
+    </p>
+    <div class="lb" id="lb">
+      <div class="lbrow hdr"><div>Pos.</div><div>Usuario</div><div>Aciertos</div><div>Puntos</div></div>
+      <div class="empty"><div class="ei">📊</div><p>Sin apuestas todavía.</p></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="view-admin" class="view">
+    <div class="stitle">Panel de administración</div>
+    <div class="adm-grid">
+      <div class="adm-card">
+        <h3>Declarar campeón</h3>
+        <p style="font-size:12px;color:var(--mut2);margin-bottom:10px;line-height:1.6">Resuelve todas las apuestas al campeón.</p>
+        <select id="adm-champ-sel"></select>
+        <button class="btn full" onclick="adminSetChampion()">✓ Confirmar campeón</button>
+        <div id="adm-champ-st" style="margin-top:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--mut)">Pendiente</div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bd)">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Apuestas al campeón</div>
+          <div id="champ-lock-ctrl"></div>
+        </div>
+      </div>
+      <div class="adm-card">
+        <h3>Estadísticas</h3>
+        <div id="admStats"><p style="font-size:12px;color:var(--mut)">Cargando…</p></div>
+      </div>
+      <div class="adm-card">
+        <h3>Zona de peligro</h3>
+        <p style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.6">Borra apuestas y resultados. Irreversible.</p>
+        <button class="btn danger full" onclick="adminReset()">⚠ Resetear todo</button>
+      </div>
+    </div>
+    <div class="stitle">Cargar resultados por ronda</div>
+    <p style="font-size:12px;color:var(--mut2);margin-bottom:16px">Los puntos se actualizan en tiempo real para todos los usuarios.</p>
+    <div id="admRounds"></div>
+  </div>
+</div>
+
+<script>
+// ─── JUGADORES ────────────────────────────────────────────
+const P = {
+  caruana:  { first:'Fabiano',  last:'Caruana',       flag:'🇺🇸', rating:2805 },
+  nakamura: { first:'Hikaru',   last:'Nakamura',      flag:'🇺🇸', rating:2794 },
+  pragg:    { first:'R.',       last:'Praggnanandhaa',flag:'🇮🇳', rating:2770 },
+  giri:     { first:'Anish',    last:'Giri',          flag:'🇳🇱', rating:2762 },
+  bluebaum: { first:'Matthias', last:'Bluebaum',      flag:'🇩🇪', rating:2730 },
+  weiyi:    { first:'Wei',      last:'Yi',            flag:'🇨🇳', rating:2754 },
+  sindarov: { first:'Javokhir', last:'Sindarov',      flag:'🇺🇿', rating:2726 },
+  esipenko: { first:'Andrey',   last:'Esipenko',      flag:'🏳️',  rating:2712 },
+};
+const fn = id => `${P[id].first} ${P[id].last}`;
+const Parr = Object.keys(P);
+
+// ─── FIXTURE OFICIAL FIDE (Blancas – Negras) ─────────────
+// Fuente: fide.com/fide-candidates-2026-pairings-drawn-in-cyprus
+const ROUNDS = [
+  { r:1,  date:'Dom 29/03', games:[['sindarov','esipenko'],['bluebaum','weiyi'],['pragg','giri'],['caruana','nakamura']] },
+  { r:2,  date:'Lun 30/03', games:[['esipenko','nakamura'],['giri','caruana'],['weiyi','pragg'],['sindarov','bluebaum']] },
+  { r:3,  date:'Mar 31/03', games:[['bluebaum','esipenko'],['pragg','sindarov'],['caruana','weiyi'],['nakamura','giri']] },
+  { r:4,  date:'Mié 01/04', games:[['esipenko','giri'],['weiyi','nakamura'],['sindarov','caruana'],['bluebaum','pragg']] },
+  { r:5,  date:'Vie 03/04', games:[['pragg','esipenko'],['caruana','bluebaum'],['nakamura','sindarov'],['giri','weiyi']] },
+  { r:6,  date:'Sáb 04/04', games:[['caruana','esipenko'],['nakamura','pragg'],['giri','bluebaum'],['weiyi','sindarov']] },
+  { r:7,  date:'Dom 05/04', games:[['esipenko','weiyi'],['sindarov','giri'],['bluebaum','nakamura'],['pragg','caruana']] },
+  { r:8,  date:'Mar 07/04', games:[['esipenko','sindarov'],['weiyi','bluebaum'],['giri','pragg'],['nakamura','caruana']] },
+  { r:9,  date:'Mié 08/04', games:[['nakamura','esipenko'],['caruana','giri'],['pragg','weiyi'],['bluebaum','sindarov']] },
+  { r:10, date:'Jue 09/04', games:[['esipenko','bluebaum'],['sindarov','pragg'],['weiyi','caruana'],['giri','nakamura']] },
+  { r:11, date:'Sáb 11/04', games:[['giri','esipenko'],['nakamura','weiyi'],['caruana','sindarov'],['pragg','bluebaum']] },
+  { r:12, date:'Dom 12/04', games:[['esipenko','pragg'],['bluebaum','caruana'],['sindarov','nakamura'],['weiyi','giri']] },
+  { r:13, date:'Mar 14/04', games:[['weiyi','esipenko'],['giri','sindarov'],['nakamura','bluebaum'],['caruana','pragg']] },
+  { r:14, date:'Mié 15/04', games:[['esipenko','caruana'],['pragg','nakamura'],['bluebaum','giri'],['sindarov','weiyi']] },
+];
+
+// Generar clave única por partida
+const gkey = (r, w, b) => `r${r}_${w}_${b}`;
+ROUNDS.forEach(rd => {
+  rd.games = rd.games.map(([w, b]) => ({ key: gkey(rd.r,w,b), white: w, black: b, round: rd.r }));
+});
+const ALL_GAMES = ROUNDS.flatMap(rd => rd.games);
+
+// ─── ESTADO ───────────────────────────────────────────────
+let CU = null;          // current user
+let allBets = {};
+let results = {};
+let locks   = {};   // { champion: bool, rounds: { 1: bool, ... } }
+let selChamp = null;
+let authMode = 'login';
+
+// ─── FIREBASE ─────────────────────────────────────────────
+document.addEventListener('fb', () => {
+  setLive('● En vivo', 'var(--grn)');
+  buildChampGrid();
+  buildAdminSelects();
+  buildAdminRounds();
+  window._fb.onBets(d    => { allBets = d; tick(); });
+  window._fb.onResults(d => { results = d; tick(); });
+  window._fb.onLocks(d   => { locks   = d; tick(); });
+});
+setTimeout(() => { if (!window._fbReady) setLive('● Error Firebase', 'var(--red)'); }, 7000);
+
+function setLive(t,c){ const e=document.getElementById('liveEl'); e.textContent=t; e.style.color=c; }
+function tick(){
+  renderLB(); renderAdmStats(); updateAdminResults();
+  if (CU){ renderUbar(); renderMyChamp(); renderMatches(); renderMyBets(); }
+}
+
+// ─── TABS ─────────────────────────────────────────────────
+function showTab(name, btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('view-'+name).classList.add('on');
+  btn.classList.add('on');
+}
+
+// ─── AUTH ─────────────────────────────────────────────────
+async function sha256(s){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function setMode(m, btn){
+  authMode = m;
+  document.querySelectorAll('.atab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('aErr').textContent = '';
+}
+async function doAuth(){
+  const u = document.getElementById('aUser').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const p = document.getElementById('aPass').value;
+  const errEl = document.getElementById('aErr');
+  errEl.textContent = '';
+  if (u.length < 2) return errEl.textContent = 'Nombre muy corto (mín. 2 caracteres).';
+  if (p.length < 4) return errEl.textContent = 'Contraseña muy corta (mín. 4 caracteres).';
+  if (!/^[a-z0-9_]+$/.test(u)) return errEl.textContent = 'Solo letras, números y _ (sin espacios).';
+  const hash = await sha256(u + ':' + p);
+  const existing = await window._fb.getUser(u);
+  if (authMode === 'reg'){
+    if (existing) return errEl.textContent = 'Ese usuario ya existe. Ingresá.';
+    await window._fb.createUser(u, hash);
+    finishLogin(u);
+  } else {
+    if (!existing) return errEl.textContent = 'Usuario no encontrado. ¿Querés registrarte?';
+    if (existing.hash !== hash) return errEl.textContent = 'Contraseña incorrecta.';
+    finishLogin(u);
+  }
+}
+function finishLogin(u){
+  CU = u;
+  document.getElementById('auth').style.display = 'none';
+  const cb = allBets[u]?.champion?.player;
+  if (cb){
+    selChamp = cb;
+    document.querySelectorAll('.ppbtn').forEach(b => b.classList.toggle('on', b.dataset.id === cb));
+  }
+  tick();
+  toast(`Bienvenido, ${u}!`);
+}
+function logout(){
+  CU = null; selChamp = null;
+  document.getElementById('aUser').value = '';
+  document.getElementById('aPass').value = '';
+  document.getElementById('aErr').textContent = '';
+  document.getElementById('auth').style.display = 'flex';
+}
+
+// ─── USER BAR ─────────────────────────────────────────────
+function renderUbar(){
+  document.getElementById('ubar').innerHTML = `
+    <div class="logged">♟ ${esc(CU)} <small>— conectado</small></div>
+    <button class="btn ghost" onclick="logout()">Salir</button>`;
+}
+
+// ─── CHAMPION ─────────────────────────────────────────────
+function buildChampGrid(){
+  document.getElementById('champGrid').innerHTML = Parr.map(id => `
+    <button class="ppbtn" data-id="${id}" onclick="selChampBtn(this,'${id}')">
+      <span class="pf">${P[id].flag}</span>
+      <span class="pi">${P[id].first}</span>
+      <span class="pl">${P[id].last}</span>
+      <span class="pr">${P[id].rating}</span>
+    </button>`).join('');
+}
+function selChampBtn(btn, id){
+  selChamp = id;
+  document.querySelectorAll('.ppbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+async function betChampion(){
+  if (!CU) return toast('Iniciá sesión.', true);
+  if (!selChamp) return toast('Seleccioná un jugador.', true);
+  if (locks.champion) return toast('Las apuestas al campeón están cerradas.', true);
+  if (results.champion) return toast('El campeón ya fue declarado.', true);
+  await window._fb.setChampBet(CU, selChamp);
+  toast(`✓ Apostaste a ${fn(selChamp)}`);
+}
+function renderMyChamp(){
+  const el = document.getElementById('myChampDisplay');
+  const champWrap = document.getElementById('champWrap');
+  if (locks.champion) {
+    champWrap.classList.add('champ-locked');
+    let banner = document.getElementById('champLockBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'champLockBanner';
+      banner.className = 'champ-lock-banner';
+      banner.innerHTML = '🔒 Las apuestas al campeón están <b>cerradas</b>. Solo el Admin puede reabrirlas.';
+      champWrap.querySelector('.champ-body').prepend(banner);
+    }
+  } else {
+    champWrap.classList.remove('champ-locked');
+    const banner = document.getElementById('champLockBanner');
+    if (banner) banner.remove();
+  }
+  const bet = allBets[CU]?.champion;
+  if (!bet){ el.innerHTML=`<p style="font-size:12px;color:var(--mut);margin-top:4px">Seleccioná y confirmá.</p>`; return; }
+  let rc='pend', rl='Pendiente';
+  if (results.champion){ rc = results.champion===bet.player?'won':'lost'; rl = rc==='won'?'✓ +5 pts':'✗ Fallaste'; }
+  const pp = P[bet.player];
+  el.innerHTML = `
+    <div class="mychamp">
+      <div class="cl">Tu apuesta</div>
+      <div class="cn">${pp?.flag||''} ${pp ? fn(bet.player) : esc(bet.player)}</div>
+      <span class="rb ${rc}">${rl}</span>
+    </div>`;
+}
+
+// ─── MATCH CARDS ──────────────────────────────────────────
+function renderMatches(){
+  document.getElementById('matchArea').innerHTML = ROUNDS.map(rd => {
+    const isLocked = !!locks.rounds?.[rd.r];
+    const lockBadge = isLocked
+      ? '<span class="lock-badge locked">🔒 Cerrada</span>'
+      : '<span class="lock-badge open">🟢 Abierta</span>';
+    const lockBanner = isLocked
+      ? '<div class="round-locked-banner">🔒 Esta ronda está <b>cerrada</b>. No podés modificar tus picks.</div>'
+      : '';
+    return `
+    <div class="rblock ${isLocked ? 'round-locked' : ''}">
+      <div class="rhdr"><h4>Ronda ${rd.r}</h4><span class="rdt">${rd.date}</span>${lockBadge}</div>
+      ${lockBanner}
+      <div class="rgames">${rd.games.map(g => matchCardHTML(g)).join('')}</div>
+    </div>`;
+  }).join('');
+}
+function matchCardHTML(g){
+  const myPick  = allBets[CU]?.matches?.[g.key]?.pick || null;
+  const realRes = results.matches?.[g.key] || null;
+  const wonLost = myPick && realRes ? (myPick===realRes?'won':'lost') : null;
+  const selW = myPick==='white'?'aw':'', selD = myPick==='draw'?'ad':'', selB = myPick==='black'?'al':'';
+  const dis  = realRes ? 'dis' : '';
+
+  let rbar = '';
+  if (realRes){
+    const cls = realRes==='white'?'rw':realRes==='draw'?'rd':'rl';
+    const txt = realRes==='white'
+      ? `⬜ ${P[g.white].last} gana` : realRes==='draw' ? '🤝 Tablas' : `⬛ ${P[g.black].last} gana`;
+    const verd = wonLost ? `<span class="verdict ${wonLost}">${wonLost==='won'?'✓ +1 pt':'✗ Fallaste'}</span>` : '';
+    rbar = `<div class="rbar ${cls}">${txt}${verd?' &nbsp;·&nbsp; '+verd:''}</div>`;
+  }
+  return `
+    <div class="mcard ${myPick?'picked':''}">
+      <div class="mhdr">
+        <div class="mside ws">
+          <div class="cpip"><div class="pip w"></div>Blancas</div>
+          <div class="mfl">${P[g.white].flag}</div>
+          <div class="mfi">${P[g.white].first}</div>
+          <div class="mla">${P[g.white].last}</div>
+          <div class="mra">${P[g.white].rating}</div>
+        </div>
+        <div class="mvsep">vs</div>
+        <div class="mside bs">
+          <div class="cpip"><div class="pip b"></div>Negras</div>
+          <div class="mfl">${P[g.black].flag}</div>
+          <div class="mfi">${P[g.black].first}</div>
+          <div class="mla">${P[g.black].last}</div>
+          <div class="mra">${P[g.black].rating}</div>
+        </div>
+      </div>
+      <div class="mpicks ${dis}">
+        <button class="popt ${selW}" onclick="pickMatch('${g.key}','white')">
+          <span class="pi">⬜</span><span class="pl">Gana ${P[g.white].last}</span><span class="ps">Blancas</span>
+        </button>
+        <button class="popt ${selD}" onclick="pickMatch('${g.key}','draw')">
+          <span class="pi">🤝</span><span class="pl">Tablas</span><span class="ps">½ – ½</span>
+        </button>
+        <button class="popt ${selB}" onclick="pickMatch('${g.key}','black')">
+          <span class="pi">⬛</span><span class="pl">Gana ${P[g.black].last}</span><span class="ps">Negras</span>
+        </button>
+      </div>
+      ${rbar}
+    </div>`;
+}
+async function pickMatch(mkey, pick){
+  if (!CU) return toast('Iniciá sesión.', true);
+  if (results.matches?.[mkey]) return toast('Partida ya resuelta.', true);
+  const game = ALL_GAMES.find(g => g.key === mkey);
+  if (locks.rounds?.[game.round]) return toast(`La Ronda ${game.round} está cerrada.`, true);
+  await window._fb.setMatchBet(CU, mkey, pick);
+  if (!allBets[CU]) allBets[CU]={};
+  if (!allBets[CU].matches) allBets[CU].matches={};
+  allBets[CU].matches[mkey]={ pick, ts:Date.now() };
+  renderMatches(); renderMyBets();
+}
+
+// ─── MIS APUESTAS ─────────────────────────────────────────
+function renderMyBets(){
+  const el = document.getElementById('myBetsWrap');
+  const myData = allBets[CU] || {};
+  const myM = myData.matches || {};
+  const cb  = myData.champion;
+
+  // stats
+  let hits=0, pts=0;
+  const keys = Object.keys(myM);
+  if (cb && results.champion && results.champion===cb.player){ hits++; pts+=5; }
+  keys.forEach(k=>{ const rr=results.matches?.[k]; if(rr && myM[k].pick===rr){ hits++; pts++; } });
+
+  let html = `
+    <div class="sboxes">
+      <div class="sbox"><div class="sv">${keys.length+(cb?1:0)}</div><div class="sl">Apuestas</div></div>
+      <div class="sbox"><div class="sv" style="color:var(--grn)">${hits}</div><div class="sl">Aciertos</div></div>
+      <div class="sbox"><div class="sv">${pts}</div><div class="sl">Puntos</div></div>
+    </div>`;
+
+  // campeón
+  html += `<div class="stitle" style="font-size:16px;margin-bottom:10px">Campeón</div>`;
+  if (cb){
+    const pp = P[cb.player];
+    let rc='pend',rl='Pendiente';
+    if(results.champion){rc=results.champion===cb.player?'won':'lost';rl=rc==='won'?'✓ +5 pts':'✗ Fallaste';}
+    html += `<div style="background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:22px">${pp?.flag||''}</span>
+      <div><div style="font-size:15px;font-weight:600">${pp ? fn(cb.player) : esc(cb.player)}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--mut2)">${pp?.rating||''}</div></div>
+      <span class="rb ${rc}" style="margin-left:auto">${rl}</span>
+    </div>`;
+  } else {
+    html += `<div class="empty" style="padding:14px"><p>No apostaste al campeón todavía.</p></div>`;
+  }
+
+  // partidas
+  html += `<div class="stitle" style="font-size:16px;margin-bottom:10px">Partidas apostadas</div>`;
+  if (!keys.length){
+    html += `<div class="empty"><div class="ei">♟</div><p>No apostaste a ninguna partida todavía.</p></div>`;
+  } else {
+    html += `<div class="bstable">
+      <div class="bshdr"><div>Partida</div><div>Tu pick</div><div>Resultado</div><div>Pts</div></div>`;
+
+    ROUNDS.forEach(rd => rd.games.forEach(g => {
+      if (!myM[g.key]) return;
+      const pick = myM[g.key].pick;
+      const rr   = results.matches?.[g.key] || null;
+      const won  = rr && pick===rr;
+      const lost = rr && pick!==rr;
+      const pickLbl = pick==='white' ? `⬜ ${P[g.white].last}` : pick==='draw' ? '🤝 Tablas' : `⬛ ${P[g.black].last}`;
+      const resLbl  = !rr ? '—' : rr==='white' ? `⬜ ${P[g.white].last}` : rr==='draw' ? '🤝 Tablas' : `⬛ ${P[g.black].last}`;
+      const resCol  = !rr ? 'var(--mut)' : won ? 'var(--grn)' : 'var(--red)';
+      html += `<div class="bsrow">
+        <div><div class="bsmatch">${P[g.white].last} – ${P[g.black].last}</div>
+          <div class="bsrnd">Ronda ${g.round} · ${rd.date}</div></div>
+        <div class="bspick">${pickLbl}</div>
+        <div class="bsres" style="color:${resCol}">${resLbl}</div>
+        <div class="bspts">${won?'+1':lost?'0':'—'}</div>
+      </div>`;
+    }));
+    html += `</div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ─── LEADERBOARD ──────────────────────────────────────────
+function renderLB(){
+  const users={};
+  const ens = u => { if(!users[u]) users[u]={hits:0,pts:0}; };
+  Object.entries(allBets).forEach(([u,d]) => {
+    ens(u);
+    if (d.champion && results.champion && d.champion.player===results.champion){ users[u].hits++; users[u].pts+=5; }
+    Object.entries(d.matches||{}).forEach(([k,b]) => {
+      const rr=results.matches?.[k]; if(rr&&b.pick===rr){users[u].hits++;users[u].pts++;}
+    });
+  });
+  const sorted=Object.entries(users).sort((a,b)=>b[1].pts-a[1].pts||b[1].hits-a[1].hits);
+  const lb=document.getElementById('lb');
+  const hdr=`<div class="lbrow hdr"><div>Pos.</div><div>Usuario</div><div>Aciertos</div><div>Puntos</div></div>`;
+  if (!sorted.length){lb.innerHTML=hdr+`<div class="empty"><div class="ei">📊</div><p>Sin apuestas todavía.</p></div>`;return;}
+  const M=['🥇','🥈','🥉'];
+  const rc=i=>i===0?'r1':i===1?'r2':i===2?'r3':'';
+  lb.innerHTML=hdr+sorted.map(([u,v],i)=>`
+    <div class="lbrow">
+      <div class="lbrank ${rc(i)}">${M[i]||(i+1)}</div>
+      <div style="font-weight:500">${esc(u)}</div>
+      <div class="lbacc">${v.hits}</div>
+      <div class="lbpts">${v.pts}</div>
+    </div>`).join('');
+}
+
+// ─── ADMIN ────────────────────────────────────────────────
+function buildAdminSelects(){
+  document.getElementById('adm-champ-sel').innerHTML =
+    `<option value="">— Elegí el campeón —</option>` +
+    Parr.map(id=>`<option value="${id}">${P[id].flag} ${fn(id)} (${P[id].rating})</option>`).join('');
+}
+function buildAdminRounds(){
+  document.getElementById('admRounds').innerHTML = ROUNDS.map(rd => `
+    <div class="adm-rblock" id="adm-rblock-${rd.r}">
+      <div class="adm-rblock-hdr">
+        <h4>Ronda ${rd.r} — ${rd.date}</h4>
+        <div class="lock-toggle" id="lt-${rd.r}"></div>
+      </div>
+      ${rd.games.map(g=>`
+        <div class="ami">
+          <div>
+            <div class="ami-info">⬜ ${P[g.white].flag} ${fn(g.white)} &nbsp;vs&nbsp; ${fn(g.black)} ${P[g.black].flag} ⬛</div>
+            <div class="ami-sub">Blancas: ${P[g.white].last} · Negras: ${P[g.black].last}</div>
+          </div>
+          <div class="ami-btns">
+            <button class="ami-btn" id="ab-${g.key}-white" onclick="adminSetMatch('${g.key}','white')">⬜ ${P[g.white].last}</button>
+            <button class="ami-btn" id="ab-${g.key}-draw"  onclick="adminSetMatch('${g.key}','draw')">🤝 Tablas</button>
+            <button class="ami-btn" id="ab-${g.key}-black" onclick="adminSetMatch('${g.key}','black')">⬛ ${P[g.black].last}</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+function updateAdminResults(){
+  ALL_GAMES.forEach(g => {
+    const r=results.matches?.[g.key];
+    ['white','draw','black'].forEach(opt=>{
+      const btn=document.getElementById(`ab-${g.key}-${opt}`); if(!btn) return;
+      btn.className='ami-btn';
+      if(r===opt) btn.className+=opt==='white'?' dw':opt==='draw'?' dd':' dl';
+    });
+  });
+  const el=document.getElementById('adm-champ-st');
+  if (results.champion){
+    const id=results.champion;
+    el.innerHTML=`Campeón: <span style="color:var(--grn)">${P[id]?.flag||''} ${P[id]?fn(id):id}</span>`;
+  } else { el.textContent='Campeón: pendiente'; }
+
+  // update lock toggles for each round
+  ROUNDS.forEach(rd => {
+    const lt = document.getElementById(`lt-${rd.r}`);
+    if (!lt) return;
+    const isLocked = !!locks.rounds?.[rd.r];
+    lt.innerHTML = isLocked
+      ? `<span class="lock-badge locked">🔒 Cerrada</span>
+         <button class="ltbtn unlock-it" onclick="adminToggleRound(${rd.r},false)">🔓 Abrir</button>`
+      : `<span class="lock-badge open">🟢 Abierta</span>
+         <button class="ltbtn lock-it" onclick="adminToggleRound(${rd.r},true)">🔒 Cerrar</button>`;
+  });
+
+  // champion lock toggle
+  const clc = document.getElementById('champ-lock-ctrl');
+  if (clc) {
+    const champLocked = !!locks.champion;
+    clc.innerHTML = champLocked
+      ? `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+           <span class="lock-badge locked">🔒 Cerradas</span>
+           <button class="ltbtn unlock-it" onclick="adminToggleChamp(false)">🔓 Abrir apuestas</button>
+         </div>`
+      : `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+           <span class="lock-badge open">🟢 Abiertas</span>
+           <button class="ltbtn lock-it" onclick="adminToggleChamp(true)">🔒 Cerrar apuestas</button>
+         </div>`;
+  }
+}
+async function adminSetMatch(mkey, res){
+  const g=ALL_GAMES.find(x=>x.key===mkey);
+  const label=res==='white'?`⬜ Gana ${fn(g.white)}`:res==='draw'?'🤝 Tablas':`⬛ Gana ${fn(g.black)}`;
+  if (!confirm(`R${g.round}: ${label}\n¿Confirmar?`)) return;
+  await window._fb.setMatchResult(mkey, res);
+  toast(`✓ R${g.round} · ${label}`);
+}
+async function adminSetChampion(){
+  const id=document.getElementById('adm-champ-sel').value;
+  if (!id) return toast('Seleccioná el campeón.', true);
+  if (!confirm(`¿Declarar a ${fn(id)} como campeón?`)) return;
+  await window._fb.setChampResult(id);
+  toast(`✓ Campeón: ${fn(id)}`);
+}
+function renderAdmStats(){
+  const users=Object.keys(allBets).length;
+  const total=Object.values(allBets).reduce((a,d)=>a+Object.keys(d.matches||{}).length,0);
+  const cbs=Object.values(allBets).filter(d=>d.champion).length;
+  const resolved=Object.keys(results.matches||{}).length;
+  document.getElementById('admStats').innerHTML=`
+    <div class="stat-line">Usuarios: <span>${users}</span></div>
+    <div class="stat-line">Apuestan al campeón: <span>${cbs}</span></div>
+    <div class="stat-line">Apuestas de partidas: <span>${total}</span></div>
+    <div class="stat-line">Partidas resueltas: <span>${resolved} / ${ALL_GAMES.length}</span></div>
+    <div class="stat-line">Campeón declarado: <span style="color:${results.champion?'var(--grn)':'var(--mut)'}">
+      ${results.champion ? (P[results.champion]?.flag||'')+' '+(P[results.champion]?fn(results.champion):results.champion) : 'No'}</span></div>`;
+}
+async function adminToggleRound(rn, lock){
+  const action = lock ? 'cerrar' : 'abrir';
+  if (!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} la Ronda ${rn}?\n${lock ? 'Los usuarios ya no podrán modificar sus picks.' : 'Los usuarios podrán modificar sus picks.'}`)) return;
+  await window._fb.setRoundLock(rn, lock);
+  toast(`${lock ? '🔒 Ronda '+rn+' cerrada' : '🔓 Ronda '+rn+' abierta'}`);
+}
+async function adminToggleChamp(lock){
+  const action = lock ? 'cerrar' : 'abrir';
+  if (!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} las apuestas al campeón?`)) return;
+  await window._fb.setChampLock(lock);
+  toast(`${lock ? '🔒 Apuestas al campeón cerradas' : '🔓 Apuestas al campeón abiertas'}`);
+}
+async function adminReset(){
+  if (!confirm('¿Borrar TODO? Irreversible.')) return;
+  await window._fb.resetAll(); toast('Todo reseteado.');
+}
+
+// ─── HELPERS ──────────────────────────────────────────────
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+let tt;
+function toast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='on'+(err?' err':'');
+  clearTimeout(tt);tt=setTimeout(()=>{t.className=''},3000);
+}
+</script>
+</body>
+</html>
